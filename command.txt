@@ -1,0 +1,1 @@
+--thread 1 --config_file E:\py_workspace\DependencyParser\debug\debug --model model.debug --use-cuda
