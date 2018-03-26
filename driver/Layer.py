@@ -320,21 +320,27 @@ class MyLSTM(nn.Module):
 
     def reset_parameters(self):
         for layer in range(self.num_layers):
-            param_ih_name = 'weight_ih_l{}{}'.format(layer, '')
-            param_hh_name = 'weight_hh_l{}{}'.format(layer, '')
-            param_ih = self.__getattr__(param_ih_name)
-            param_hh = self.__getattr__(param_hh_name)
-            W = orthonormal_initializer(self.hidden_size, self.hidden_size + self.input_size)
-            W_h, W_x = W[:, :self.hidden_size], W[:, self.hidden_size:]
-            param_ih.data.copy_(torch.from_numpy(np.concatenate([W_x] * 4, 0)))
-            param_hh.data.copy_(torch.from_numpy(np.concatenate([W_h] * 4, 0)))
-
             if self.bidirectional:
                 param_ih_name = 'weight_ih_l{}{}'.format(layer, '_reverse')
                 param_hh_name = 'weight_hh_l{}{}'.format(layer, '_reverse')
                 param_ih = self.__getattr__(param_ih_name)
                 param_hh = self.__getattr__(param_hh_name)
-                W = orthonormal_initializer(self.hidden_size, self.hidden_size + self.input_size)
+                if layer == 0:
+                    W = orthonormal_initializer(self.hidden_size, self.hidden_size + self.input_size)
+                else:
+                    W = orthonormal_initializer(self.hidden_size, self.hidden_size + 2 * self.hidden_size)
+                W_h, W_x = W[:, :self.hidden_size], W[:, self.hidden_size:]
+                param_ih.data.copy_(torch.from_numpy(np.concatenate([W_x] * 4, 0)))
+                param_hh.data.copy_(torch.from_numpy(np.concatenate([W_h] * 4, 0)))
+            else:
+                param_ih_name = 'weight_ih_l{}{}'.format(layer, '')
+                param_hh_name = 'weight_hh_l{}{}'.format(layer, '')
+                param_ih = self.__getattr__(param_ih_name)
+                param_hh = self.__getattr__(param_hh_name)
+                if layer == 0:
+                    W = orthonormal_initializer(self.hidden_size, self.hidden_size + self.input_size)
+                else:
+                    W = orthonormal_initializer(self.hidden_size, self.hidden_size + self.hidden_size)
                 W_h, W_x = W[:, :self.hidden_size], W[:, self.hidden_size:]
                 param_ih.data.copy_(torch.from_numpy(np.concatenate([W_x] * 4, 0)))
                 param_hh.data.copy_(torch.from_numpy(np.concatenate([W_h] * 4, 0)))
