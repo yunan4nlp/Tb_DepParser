@@ -44,20 +44,20 @@ def inst(data, actions):
         inst.append((data[idx], actions[idx]))
     return inst
 
-def train(train_data, dev_data, test_data, parser, vocab, config):
+def train(train_inst, dev_data, test_data, parser, vocab, config):
     encoder_optimizer = Optimizer(filter(lambda p: p.requires_grad, parser.encoder.parameters()), config)
     decoder_optimizer = Optimizer(filter(lambda p: p.requires_grad, parser.decoder.parameters()), config)
 
     global_step = 0
     best_UAS = 0
-    batch_num = int(np.ceil(len(train_data) / float(config.train_batch_size)))
+    batch_num = int(np.ceil(len(train_inst) / float(config.train_batch_size)))
     for iter in range(config.train_iters):
         start_time = time.time()
         print('Iteration: ' + str(iter))
         batch_iter = 0
 
         overall_action_correct,  overall_total_action = 0, 0
-        for onebatch in data_iter(train_data, config.train_batch_size, True):
+        for onebatch in data_iter(train_inst, config.train_batch_size, True):
             words, extwords, tags, heads, rels, lengths, masks, sents, gold_actions, acs= \
                 batch_data_variable_actions(onebatch, vocab)
             parser.encoder.train()
@@ -74,9 +74,9 @@ def train(train_data, dev_data, test_data, parser, vocab, config):
             overall_total_action += total_actions
             overall_action_correct += correct_actions
             during_time = float(time.time() - start_time)
-
-            print("Step:%d, Iter:%d, batch:%d, time:%.2f, acc:%.2f, loss:%.2f" \
-                %(global_step, iter, batch_iter,  during_time, overall_action_correct / overall_total_action, loss_value[0]))
+            acc = overall_action_correct / overall_total_action
+            print("Step:%d, Iter:%d, batch:%d, time:%.2f, acc:%.2f, loss:%.2f"
+                  %(global_step, iter, batch_iter,  during_time, acc, loss_value))
             batch_iter += 1
 
             if batch_iter % config.update_every == 0 or batch_iter == batch_num:
@@ -90,20 +90,19 @@ def train(train_data, dev_data, test_data, parser, vocab, config):
                 parser.decoder.zero_grad()
                 global_step += 1
 
-                arc_correct, rel_correct, arc_total, dev_uas, dev_las = \
-                    evaluate(dev_data, parser, vocab, config.dev_file + '.' + str(global_step))
-                print("Dev: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
-                      (arc_correct, arc_total, dev_uas, rel_correct, arc_total, dev_las))
-                arc_correct, rel_correct, arc_total, test_uas, test_las = \
-                    evaluate(test_data, parser, vocab, config.test_file + '.' + str(global_step))
-                print("Test: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
-                      (arc_correct, arc_total, test_uas, rel_correct, arc_total, test_las))
-
-                if dev_uas > best_UAS:
-                    print("Exceed best uas: history = %.2f, current = %.2f" % (best_UAS, dev_uas))
-                    best_UAS = dev_uas
-                    if config.save_after > 0 and iter > config.save_after:
-                        torch.save(parser.model.state_dict(), config.save_model_path)
+        arc_correct, rel_correct, arc_total, dev_uas, dev_las = \
+        evaluate(dev_data, parser, vocab, config.dev_file + '.' + str(global_step))
+        print("Dev: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
+                (arc_correct, arc_total, dev_uas, rel_correct, arc_total, dev_las))
+        arc_correct, rel_correct, arc_total, test_uas, test_las = \
+        evaluate(test_data, parser, vocab, config.test_file + '.' + str(global_step))
+        print("Test: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
+                (arc_correct, arc_total, test_uas, rel_correct, arc_total, test_las))
+        if dev_uas > best_UAS:
+            print("Exceed best uas: history = %.2f, current = %.2f" % (best_UAS, dev_uas))
+            best_UAS = dev_uas
+        if config.save_after > 0 and iter > config.save_after:
+            torch.save(parser.model.state_dict(), config.save_model_path)
 
 
 def evaluate(data, parser, vocab, outputFile):
@@ -114,15 +113,15 @@ def evaluate(data, parser, vocab, outputFile):
     output = open(outputFile, 'w', encoding='utf-8')
     arc_total_test, arc_correct_test, rel_total_test, rel_correct_test = 0, 0, 0, 0
     for onebatch in data_iter(data, config.test_batch_size, False):
-        words, extwords, tags, heads, rels, lengths, masks, sents, gold_actions, acs = \
-            batch_data_variable_actions(onebatch, vocab)
+        words, extwords, tags, heads, rels, lengths, masks = \
+            batch_data_variable(onebatch, vocab)
         count = 0
         parser.encode(words, extwords, tags, masks)
-        parser.decode(sents, gold_actions, vocab)
+        parser.decode(onebatch, None, vocab)
         for (idx, cur_states) in enumerate(parser.batch_states):
             tree = cur_states[-1].get_result(vocab)
             printDepTree(output, tree)
-            arc_total, arc_correct, rel_total, rel_correct = evalDepTree(sents[idx], tree)
+            arc_total, arc_correct, rel_total, rel_correct = evalDepTree(onebatch[idx], tree)
             arc_total_test += arc_total
             arc_correct_test += arc_correct
             rel_total_test += rel_total
@@ -210,10 +209,10 @@ if __name__ == '__main__':
     vocab.create_action_table(train_actions)
 
     train_insts = inst(train_data, train_actions)
-    dev_insts = inst(dev_data, dev_actions)
-    test_insts = inst(test_data, test_actions)
+    #dev_insts = inst(dev_data, dev_actions)
+    #test_insts = inst(test_data, test_actions)
 
-    encoder = ParserModel(vocab, config, vec)
+    encoder = Encoder(vocab, config, vec)
     decoder = Decoder(vocab, config)
 
     if config.use_cuda:
@@ -221,4 +220,4 @@ if __name__ == '__main__':
         encoder = encoder.cuda()
         decoder = decoder.cuda()
     parser = TransitionBasedParser(encoder, decoder, vocab.ROOT, config)
-    train(train_insts, dev_insts, test_insts, parser, vocab, config)
+    train(train_insts, dev_data, test_data, parser, vocab, config)

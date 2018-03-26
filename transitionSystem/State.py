@@ -28,6 +28,17 @@ class State:
         self._inst = Instance(sentence, vocab)
         self._word_size = len(self._inst.words)
 
+    def clear(self):
+        self._next_index = 0
+        self._stack_size = 0
+        self._word_size = 0
+        self._is_gold = True
+        self._is_start = True
+        self._pre_action = Action(CODE.NO_ACTION, -1)
+        self._pre_state = None
+
+        self.done_mark()
+
     def done_mark(self):
         self._stack[self._stack_size] = -2
         self._head[self._next_index] = -2

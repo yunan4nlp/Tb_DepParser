@@ -31,9 +31,9 @@ def drop_sequence_sharedmask(inputs, dropout, batch_first=True):
     return inputs.transpose(1, 0)
 
 
-class ParserModel(nn.Module):
+class Encoder(nn.Module):
     def __init__(self, vocab, config, pretrained_embedding):
-        super(ParserModel, self).__init__()
+        super(Encoder, self).__init__()
         self.config = config
         self.word_embed = nn.Embedding(vocab.vocab_size, config.word_dims, padding_idx=0)
         self.extword_embed = nn.Embedding(vocab.extvocab_size, config.word_dims, padding_idx=0)

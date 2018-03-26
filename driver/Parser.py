@@ -14,6 +14,9 @@ class TransitionBasedParser(object):
         self.device = encoder_p.get_device() if self.use_cuda else None
         self.encoder_bucket = Variable(torch.zeros(1, self.config.lstm_hiddens * 2)).type(torch.FloatTensor)
         self.score_bucket = Variable(torch.zeros(1, self.decoder.vocab.ac_size)).type(torch.FloatTensor)
+        if self.use_cuda:
+            self.encoder_bucket =self.encoder_bucket.cuda(self.device)
+            self.score_bucket =self.score_bucket.cuda(self.device)
         self.step = []
         self.gold_pred_actions = []
         self.training = True
@@ -69,7 +72,8 @@ class TransitionBasedParser(object):
 
         while not self.all_states_are_finished(batch_states):
             self.prepare_atom_feat(batch_states, vocab)
-            gold_actions = self.get_gold_actions(batch_states, bacth_gold_actions)
+            if self.training:
+                gold_actions = self.get_gold_actions(batch_states, bacth_gold_actions)
             hidden_states = self.batch_hidden_state(batch_states)
             all_candidates = self.get_candidates(batch_states, vocab)
             action_scores = self.decoder.forward(hidden_states, all_candidates)
