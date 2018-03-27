@@ -9,9 +9,9 @@ from driver.Model import *
 from data.Dataloader import *
 from driver.Config import *
 from driver.Parser import *
-from transitionSystem.Action import *
-from transitionSystem.State import *
-from transitionSystem.Instance import *
+from transition.Action import *
+from transition.State import *
+from transition.Instance import *
 import pickle
 
 def get_gold_actions(data, vocab):

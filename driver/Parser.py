@@ -1,4 +1,4 @@
-from transitionSystem.State import *
+from transition.State import *
 import numpy as np
 from torch.autograd import Variable
 import torch.nn.functional as F

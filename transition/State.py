@@ -1,7 +1,7 @@
 from copy import deepcopy
-from transitionSystem.Action import *
-from transitionSystem.Instance import *
-from transitionSystem.AtomFeat import *
+from transition.Action import *
+from transition.Instance import *
+from transition.AtomFeat import *
 from data.Dependency import *
 import torch
 

@@ -1,6 +1,6 @@
 from collections import Counter
 from data.Dependency import *
-from transitionSystem.Action import *
+from transition.Action import *
 import numpy as np
 
 class Vocab(object):
