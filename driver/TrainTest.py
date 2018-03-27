@@ -16,19 +16,20 @@ import pickle
 
 def get_gold_actions(data, vocab):
     all_actions = []
+    all_states = []
+    for idx in range(0, 1024):
+        all_states.append(State())
     for sentence in data:
-        all_states = []
-        start = State()
-        all_states.append(start)
+        start = all_states[0]
+        start.clear()
         start.ready(sentence, vocab)
         actions = []
         step = 0
         while not all_states[step].is_end():
             gold_action = all_states[step].get_gold_action(vocab)
             actions.append(gold_action)
-            next_state = State()
+            next_state = all_states[step + 1]
             all_states[step].move(next_state, gold_action)
-            all_states.append(next_state)
             step += 1
         all_actions.append(actions)
         result = all_states[step].get_result(vocab)
@@ -199,18 +200,15 @@ if __name__ == '__main__':
     dev_data = read_corpus(config.dev_file, vocab)
     test_data = read_corpus(config.test_file, vocab)
 
+    start_a = time.time()
     train_actions = get_gold_actions(train_data, vocab)
-    dev_actions = get_gold_actions(dev_data, vocab)
-    test_actions = get_gold_actions(test_data, vocab)
+    print("Get Action Time: ", time.time() - start_a)
 
-    assert len(train_data) == len(train_actions) and \
-           len(dev_data) == len(dev_actions) and \
-           len(test_data) == len(test_actions)
+    assert len(train_data) == len(train_actions)
+
     vocab.create_action_table(train_actions)
 
     train_insts = inst(train_data, train_actions)
-    #dev_insts = inst(dev_data, dev_actions)
-    #test_insts = inst(test_data, test_actions)
 
     encoder = Encoder(vocab, config, vec)
     decoder = Decoder(vocab, config)
